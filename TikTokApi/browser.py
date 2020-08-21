@@ -7,9 +7,9 @@ import atexit
 import requests
 import logging
 
-# Import Detection From Stealth
+# Import Detectdaon From Stealth
 from .stealth import stealth
-
+from fake_useragent import UserAgent
 
 class browser:
     def __init__(self, url, language='en', proxy=None, find_redirect=False, api_url=None, debug=False, newParams=False):
@@ -20,11 +20,14 @@ class browser:
         self.referrer = "https://www.tiktok.com/"
         self.language = language
 
-        self.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.125 Safari/537.36"
+        #self.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.125 Safari/537.36"
+        user_agent = UserAgent()
+        self.userAgent = f'user-agent={user_agent.random}'
         self.args = [
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-infobars",
+            "--window-size=1920,1080",
             "--window-position=0,0",
             "--ignore-certifcate-errors",
             "--ignore-certifcate-errors-spki-list",
