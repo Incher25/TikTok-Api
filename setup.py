@@ -21,7 +21,8 @@ setuptools.setup(
   install_requires=[
           'requests',
           'selenium',
-          'pyppeteer'
+          'pyppeteer',
+          'fake-useragent'
       ],
   classifiers=[
     'Development Status :: 3 - Alpha',
