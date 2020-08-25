@@ -3,13 +3,20 @@ import pyppeteer
 import random
 import time
 import string
-import atexit
 import requests
 import logging
+from threading import Thread
 
 # Import Detectdaon From Stealth
 from .stealth import stealth
 from fake_useragent import UserAgent
+
+from .get_acrawler import get_acrawler
+
+async_support = False
+def set_async():
+    global async_support
+    async_support = True
 
 class browser:
     def __init__(self, url, language='en', proxy=None, find_redirect=False, api_url=None, debug=False, newParams=False):
@@ -20,9 +27,9 @@ class browser:
         self.referrer = "https://www.tiktok.com/"
         self.language = language
 
-        #self.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.125 Safari/537.36"
-        user_agent = UserAgent()
-        self.userAgent = f'user-agent={user_agent.random}'
+        self.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.125 Safari/537.36"
+        #user_agent = UserAgent()
+        #self.userAgent = f'user-agent={user_agent.random}'
         self.args = [
             "--no-sandbox",
             "--disable-setuid-sandbox",
@@ -33,9 +40,6 @@ class browser:
             "--ignore-certifcate-errors-spki-list",
             "--user-agent=" + self.userAgent
         ]
-
-        #self.args = []
-        # "--user-agent=" + self.userAgent,
 
         if proxy != None:
             if "@" in proxy:
@@ -52,19 +56,36 @@ class browser:
             'handleSIGTERM': False,
             'handleSIGHUP': False
         }
-
-        try:
-            self.loop = asyncio.new_event_loop()
+        
+        if async_support:
+            loop = asyncio.new_event_loop()
+            t = Thread(target=self.__start_background_loop, args=(loop, ), daemon=True)
+            t.start()
             if find_redirect:
-                self.loop.run_until_complete(self.find_redirect())
+                fut = asyncio.run_coroutine_threadsafe(self.find_redirect(), loop)
             elif newParams:
-                self.loop.run_until_complete(self.newParams())
+                fut = asyncio.run_coroutine_threadsafe(self.newParams(), loop)
             else:
-                self.loop.run_until_complete(self.start())
-        except:
-            self.loop.close()
+                fut = asyncio.run_coroutine_threadsafe(self.start(), loop)
+            fut.result()
+        else:
+            try:
+                self.loop = asyncio.new_event_loop()
+                if find_redirect:
+                    self.loop.run_until_complete(self.find_redirect())
+                elif newParams:
+                    self.loop.run_until_complete(self.newParams())
+                else:
+                    self.loop.run_until_complete(self.start())
+            except:
+                self.loop.close()
 
-    async def newParams(self):
+    def __start_background_loop(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+        
+    async def newParams(self) -> None:
         self.browser = await pyppeteer.launch(self.options)
         self.page = await self.browser.newPage()
         await self.page.goto("about:blank")
@@ -85,6 +106,8 @@ class browser:
 
         await self.browser.close()
         self.browser.process.communicate()
+
+        return 0
 
     async def start(self):
         self.browser = await pyppeteer.launch(self.options)
@@ -114,8 +137,7 @@ class browser:
         self.verifyFp = ''.join(random.choice(
             string.ascii_lowercase + string.ascii_uppercase + string.digits) for i in range(16))
 
-        await self.page.evaluate("() => { " + self.__get_js(proxy=self.proxy) + " }")
-
+        await self.page.evaluate("() => { " + get_acrawler() + " }")
         self.signature = await self.page.evaluate('''() => {
         var url = "''' + self.url + "&verifyFp=" + self.verifyFp + '''"
         var token = window.byted_acrawler.sign({url: url});
@@ -130,8 +152,8 @@ class browser:
                                  })
 
             self.data = await self.page.content()
-            self.data = json.loads(self.data.replace("</pre></body></html>", "").replace(
-                '<html><head></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">', ""))
+            #self.data = json.loads(self.data.replace("</pre></body></html>", "").replace(
+            #    '<html><head></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">', ""))
 
         await self.browser.close()
         self.browser.process.communicate()
